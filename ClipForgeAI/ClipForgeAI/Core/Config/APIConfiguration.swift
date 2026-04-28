@@ -10,8 +10,12 @@ import Foundation
 struct APIConfiguration {
     let baseURL: URL
 
+    static let localDevelopment = APIConfiguration(
+        baseURL: URL(string: "http://127.0.0.1:3000/api")!
+    )
+
     static let production = APIConfiguration(
-        baseURL: URL(string: "https://api.clipforge.ai")!
+        baseURL: URL(string: "https://api.clipforge.ai/api")!
     )
 
     static var current: APIConfiguration {
@@ -23,7 +27,7 @@ struct APIConfiguration {
             let rawValue,
             let url = URL(string: rawValue)
         else {
-            return .production
+            return .localDevelopment
         }
 
         return APIConfiguration(baseURL: url)

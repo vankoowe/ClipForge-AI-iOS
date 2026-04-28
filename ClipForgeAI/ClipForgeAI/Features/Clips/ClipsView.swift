@@ -10,8 +10,8 @@ import SwiftUI
 struct ClipsView: View {
     @StateObject private var viewModel: ClipsViewModel
 
-    init(videoID: String, clipService: any ClipServiceProtocol) {
-        _viewModel = StateObject(wrappedValue: ClipsViewModel(videoID: videoID, clipService: clipService))
+    init(videoID: String, jobID: String?, clipService: any ClipServiceProtocol) {
+        _viewModel = StateObject(wrappedValue: ClipsViewModel(videoID: videoID, jobID: jobID, clipService: clipService))
     }
 
     var body: some View {
@@ -100,6 +100,6 @@ private struct ClipRow: View {
     let container = AppContainer()
 
     NavigationStack {
-        ClipsView(videoID: "video_123", clipService: container.clipService)
+        ClipsView(videoID: "video_123", jobID: "job_123", clipService: container.clipService)
     }
 }

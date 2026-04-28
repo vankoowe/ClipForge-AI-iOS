@@ -17,10 +17,12 @@ final class ClipsViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let videoID: String
+    private var jobID: String?
     private let clipService: any ClipServiceProtocol
 
-    init(videoID: String, clipService: any ClipServiceProtocol) {
+    init(videoID: String, jobID: String?, clipService: any ClipServiceProtocol) {
         self.videoID = videoID
+        self.jobID = jobID
         self.clipService = clipService
     }
 
@@ -33,7 +35,12 @@ final class ClipsViewModel: ObservableObject {
         }
 
         do {
-            clips = try await clipService.fetchClips(videoID: videoID)
+            guard let jobID else {
+                clips = []
+                return
+            }
+
+            clips = try await clipService.fetchClips(jobID: jobID)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -49,6 +56,7 @@ final class ClipsViewModel: ObservableObject {
 
         do {
             generatedJob = try await clipService.generateClips(videoID: videoID)
+            jobID = generatedJob?.id
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -14,6 +14,10 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
     let status: JobStatus
     let progress: Double
     let message: String?
+    let errorMessage: String?
+    let isTerminal: Bool
+    let clipsCount: Int?
+    let clips: [Clip]?
     let createdAt: Date?
     let updatedAt: Date?
     let completedAt: Date?
@@ -35,7 +39,12 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         case type
         case status
         case progress
+        case progressPercent
         case message
+        case errorMessage
+        case isTerminal
+        case clipsCount
+        case clips
         case createdAt
         case updatedAt
         case completedAt
@@ -48,6 +57,10 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         status: JobStatus = .unknown,
         progress: Double = 0,
         message: String? = nil,
+        errorMessage: String? = nil,
+        isTerminal: Bool? = nil,
+        clipsCount: Int? = nil,
+        clips: [Clip]? = nil,
         createdAt: Date? = nil,
         updatedAt: Date? = nil,
         completedAt: Date? = nil
@@ -58,6 +71,10 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         self.status = status
         self.progress = progress
         self.message = message
+        self.errorMessage = errorMessage
+        self.isTerminal = isTerminal ?? status.isTerminal
+        self.clipsCount = clipsCount
+        self.clips = clips
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.completedAt = completedAt
@@ -76,9 +93,14 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         self.id = id
         self.videoID = try container.decodeFirstPresent(String.self, forKeys: [.videoID, .videoId])
         self.type = try container.decodeIfPresent(String.self, forKey: .type)
-        self.status = try container.decodeIfPresent(JobStatus.self, forKey: .status) ?? .unknown
-        self.progress = try container.decodeIfPresent(Double.self, forKey: .progress) ?? 0
+        let decodedStatus = try container.decodeIfPresent(JobStatus.self, forKey: .status) ?? .unknown
+        self.status = decodedStatus
+        self.progress = try container.decodeFirstPresent(Double.self, forKeys: [.progressPercent, .progress]) ?? 0
         self.message = try container.decodeIfPresent(String.self, forKey: .message)
+        self.errorMessage = try container.decodeIfPresent(String.self, forKey: .errorMessage)
+        self.isTerminal = try container.decodeIfPresent(Bool.self, forKey: .isTerminal) ?? decodedStatus.isTerminal
+        self.clipsCount = try container.decodeIfPresent(Int.self, forKey: .clipsCount)
+        self.clips = try container.decodeIfPresent([Clip].self, forKey: .clips)
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
         self.updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         self.completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
@@ -92,6 +114,10 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         try container.encode(status, forKey: .status)
         try container.encode(progress, forKey: .progress)
         try container.encodeIfPresent(message, forKey: .message)
+        try container.encodeIfPresent(errorMessage, forKey: .errorMessage)
+        try container.encode(isTerminal, forKey: .isTerminal)
+        try container.encodeIfPresent(clipsCount, forKey: .clipsCount)
+        try container.encodeIfPresent(clips, forKey: .clips)
         try container.encodeIfPresent(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)

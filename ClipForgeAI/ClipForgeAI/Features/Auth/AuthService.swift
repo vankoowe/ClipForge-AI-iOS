@@ -16,9 +16,9 @@ protocol AuthServiceProtocol {
 
 final class AuthService: AuthServiceProtocol {
     private let apiClient: any APIClientProtocol
-    private let tokenStore: any TokenStore
+    private let tokenStore: any AuthStore
 
-    init(apiClient: any APIClientProtocol, tokenStore: any TokenStore) {
+    init(apiClient: any APIClientProtocol, tokenStore: any AuthStore) {
         self.apiClient = apiClient
         self.tokenStore = tokenStore
     }
@@ -33,12 +33,12 @@ final class AuthService: AuthServiceProtocol {
         )
 
         let response = try await apiClient.request(endpoint, as: AuthResponse.self)
-        try tokenStore.saveToken(response.accessToken)
+        try tokenStore.saveTokens(response.tokens)
         return response
     }
 
     func register(name: String, email: String, password: String) async throws -> AuthResponse {
-        let body = RegisterRequest(name: name, email: email, password: password)
+        let body = RegisterRequest(email: email, password: password)
         let endpoint = APIEndpoint(
             path: "/auth/register",
             method: .post,
@@ -47,22 +47,22 @@ final class AuthService: AuthServiceProtocol {
         )
 
         let response = try await apiClient.request(endpoint, as: AuthResponse.self)
-        try tokenStore.saveToken(response.accessToken)
+        try tokenStore.saveTokens(response.tokens)
         return response
     }
 
     func restoreSession() async throws -> User? {
-        guard tokenStore.readToken() != nil else {
+        guard tokenStore.readTokens() != nil else {
             return nil
         }
 
-        let endpoint = APIEndpoint(path: "/auth/me", method: .get)
+        let endpoint = APIEndpoint(path: "/users/me", method: .get)
         let response = try await apiClient.request(endpoint, as: APIObjectResponse<User>.self)
         return response.value
     }
 
     func logout() throws {
-        try tokenStore.deleteToken()
+        try tokenStore.deleteTokens()
     }
 }
 
@@ -72,7 +72,6 @@ private struct LoginRequest: Encodable {
 }
 
 private struct RegisterRequest: Encodable {
-    let name: String
     let email: String
     let password: String
 }

@@ -26,6 +26,11 @@ struct Clip: Codable, Identifiable, Equatable, Hashable {
         case endTime
         case downloadURL
         case downloadUrl
+        case url
+        case publicURL
+        case publicUrl
+        case fileURL
+        case fileUrl
         case createdAt
     }
 
@@ -62,7 +67,10 @@ struct Clip: Codable, Identifiable, Equatable, Hashable {
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Generated clip"
         self.startTime = try container.decodeIfPresent(Double.self, forKey: .startTime) ?? 0
         self.endTime = try container.decodeIfPresent(Double.self, forKey: .endTime) ?? 0
-        self.downloadURL = try container.decodeFirstPresent(URL.self, forKeys: [.downloadURL, .downloadUrl])
+        self.downloadURL = try container.decodeFirstPresent(
+            URL.self,
+            forKeys: [.downloadURL, .downloadUrl, .url, .publicURL, .publicUrl, .fileURL, .fileUrl]
+        )
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 

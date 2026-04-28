@@ -38,9 +38,13 @@ struct JobStatusView: View {
 
                     StatusBadge(title: job.status.displayName, status: job.status)
 
-                    if let message = job.message {
+                    if let message = job.message ?? job.errorMessage {
                         Text(message)
                             .foregroundStyle(.secondary)
+                    }
+
+                    if let clipsCount = job.clipsCount {
+                        LabeledContent("Clips", value: "\(clipsCount)")
                     }
                 }
 

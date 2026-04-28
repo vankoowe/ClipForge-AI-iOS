@@ -15,9 +15,11 @@ final class AppContainer: ObservableObject {
 
     private lazy var apiClient: any APIClientProtocol = APIClient(
         configuration: configuration,
-        authTokenProvider: { [weak tokenStore] in
-            tokenStore?.readToken()
-        }
+        authStore: tokenStore
+    )
+
+    private lazy var uploadClient: any UploadClientProtocol = UploadClient(
+        urlSession: .shared
     )
 
     lazy var authService: any AuthServiceProtocol = AuthService(
@@ -31,7 +33,7 @@ final class AppContainer: ObservableObject {
 
     lazy var uploadService: any UploadServiceProtocol = UploadService(
         apiClient: apiClient,
-        urlSession: .shared
+        uploadClient: uploadClient
     )
 
     lazy var jobService: any JobServiceProtocol = JobService(

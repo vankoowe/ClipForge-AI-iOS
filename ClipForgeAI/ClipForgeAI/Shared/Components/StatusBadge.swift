@@ -39,7 +39,7 @@ struct StatusBadge: View {
 private extension VideoStatus {
     var tint: Color {
         switch self {
-        case .ready, .processed:
+        case .ready, .processed, .completed:
             return .green
         case .failed:
             return .red

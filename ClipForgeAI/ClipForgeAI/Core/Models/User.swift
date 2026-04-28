@@ -12,6 +12,7 @@ struct User: Codable, Identifiable, Equatable, Hashable {
     let email: String
     let name: String?
     let role: String?
+    let isEmailVerified: Bool?
     let createdAt: Date?
 
     private enum CodingKeys: String, CodingKey {
@@ -20,6 +21,8 @@ struct User: Codable, Identifiable, Equatable, Hashable {
         case email
         case name
         case role
+        case isEmailVerified
+        case emailVerified
         case createdAt
     }
 
@@ -28,12 +31,14 @@ struct User: Codable, Identifiable, Equatable, Hashable {
         email: String,
         name: String? = nil,
         role: String? = nil,
+        isEmailVerified: Bool? = nil,
         createdAt: Date? = nil
     ) {
         self.id = id
         self.email = email
         self.name = name
         self.role = role
+        self.isEmailVerified = isEmailVerified
         self.createdAt = createdAt
     }
 
@@ -51,6 +56,7 @@ struct User: Codable, Identifiable, Equatable, Hashable {
         self.email = try container.decode(String.self, forKey: .email)
         self.name = try container.decodeIfPresent(String.self, forKey: .name)
         self.role = try container.decodeIfPresent(String.self, forKey: .role)
+        self.isEmailVerified = try container.decodeFirstPresent(Bool.self, forKeys: [.isEmailVerified, .emailVerified])
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
@@ -60,6 +66,7 @@ struct User: Codable, Identifiable, Equatable, Hashable {
         try container.encode(email, forKey: .email)
         try container.encodeIfPresent(name, forKey: .name)
         try container.encodeIfPresent(role, forKey: .role)
+        try container.encodeIfPresent(isEmailVerified, forKey: .isEmailVerified)
         try container.encodeIfPresent(createdAt, forKey: .createdAt)
     }
 }

@@ -81,7 +81,7 @@ struct DashboardView: View {
                 ForEach(viewModel.videos) { video in
                     VStack(alignment: .leading, spacing: 12) {
                         NavigationLink {
-                            ClipsView(videoID: video.id, clipService: clipService)
+                            ClipsView(videoID: video.id, jobID: video.latestJobID, clipService: clipService)
                         } label: {
                             VideoRow(video: video)
                         }
