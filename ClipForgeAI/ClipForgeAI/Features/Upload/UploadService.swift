@@ -90,7 +90,7 @@ final class UploadService: UploadServiceProtocol {
         fileKey: String,
         originalFileURL: URL,
         fileName: String,
-        durationSeconds: Double,
+        durationSeconds: Int,
         fileSizeBytes: Int64
     ) async throws -> Video {
         let body = CreateVideoRecordRequest(
@@ -133,7 +133,7 @@ final class UploadService: UploadServiceProtocol {
         return (attributes[.size] as? NSNumber)?.int64Value ?? 0
     }
 
-    private func durationSeconds(for fileURL: URL) async throws -> Double {
+    private func durationSeconds(for fileURL: URL) async throws -> Int {
         let asset = AVURLAsset(url: fileURL)
         let duration = try await asset.load(.duration)
         let seconds = CMTimeGetSeconds(duration)
@@ -142,7 +142,7 @@ final class UploadService: UploadServiceProtocol {
             return 0
         }
 
-        return max(seconds, 0)
+        return max(Int(ceil(seconds)), 0)
     }
 
     private func mimeType(for fileURL: URL) -> String {
@@ -164,7 +164,7 @@ private struct CreateVideoRecordRequest: Encodable {
     let fileKey: String
     let originalFileUrl: URL
     let fileName: String
-    let durationSeconds: Double
+    let durationSeconds: Int
     let fileSizeBytes: Int64
 }
 

@@ -21,14 +21,7 @@ final class VideoService: VideoServiceProtocol {
     }
 
     func fetchVideos() async throws -> [Video] {
-        let endpoint = APIEndpoint(
-            path: "/videos",
-            method: .get,
-            queryItems: [
-                URLQueryItem(name: "page", value: "1"),
-                URLQueryItem(name: "pageSize", value: "20")
-            ]
-        )
+        let endpoint = APIEndpoint(path: "/videos", method: .get)
         let response = try await apiClient.request(endpoint, as: APICollectionResponse<Video>.self)
         return response.items
     }

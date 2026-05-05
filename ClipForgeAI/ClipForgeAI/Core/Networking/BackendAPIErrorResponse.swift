@@ -15,7 +15,15 @@ struct BackendAPIErrorResponse: Decodable {
     let path: String?
 
     var resolvedMessage: String? {
-        error?.message ?? message
+        guard let baseMessage = error?.message ?? message else {
+            return error?.details?.joined(separator: "; ")
+        }
+
+        guard let details = error?.details, !details.isEmpty else {
+            return baseMessage
+        }
+
+        return "\(baseMessage): \(details.joined(separator: "; "))"
     }
 
     static func decode(from data: Data) -> BackendAPIErrorResponse? {
