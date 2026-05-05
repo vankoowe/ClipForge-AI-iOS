@@ -31,14 +31,16 @@ struct JobStatusView: View {
             Form {
                 Section("Progress") {
                     ProgressView(value: job.normalizedProgress) {
-                        Text(job.status.displayName)
+                        Text(job.displayStatus.displayName)
                     } currentValueLabel: {
                         Text("\(job.progressPercentage)%")
                     }
 
-                    StatusBadge(title: job.status.displayName, status: job.status)
+                    StatusBadge(title: job.displayStatus.displayName, status: job.displayStatus)
 
-                    if let message = job.message ?? job.errorMessage {
+                    if let errorMessage = job.errorMessage {
+                        ErrorMessageView(message: errorMessage)
+                    } else if let message = job.displayMessage {
                         Text(message)
                             .foregroundStyle(.secondary)
                     }

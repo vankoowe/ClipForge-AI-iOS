@@ -31,6 +31,26 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         Int((normalizedProgress * 100).rounded())
     }
 
+    var displayStatus: JobStatus {
+        if hasProcessingError, !status.isTerminal {
+            return .failed
+        }
+
+        return status
+    }
+
+    var displayMessage: String? {
+        errorMessage ?? message
+    }
+
+    var shouldStopPolling: Bool {
+        isTerminal || hasProcessingError
+    }
+
+    private var hasProcessingError: Bool {
+        errorMessage?.nilIfEmpty != nil
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case mongoID = "_id"

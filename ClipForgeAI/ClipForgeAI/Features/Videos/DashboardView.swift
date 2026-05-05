@@ -10,6 +10,7 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var viewModel: VideosViewModel
+    @State private var navigationPath: [DashboardRoute] = []
     @State private var isShowingUpload = false
     @State private var isRefreshingUser = false
 
@@ -30,9 +31,17 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             content
                 .navigationTitle("Videos")
+                .navigationDestination(for: DashboardRoute.self) { route in
+                    switch route {
+                    case .clips(let videoID, let jobID):
+                        ClipsView(videoID: videoID, jobID: jobID, clipService: clipService)
+                    case .job(let jobID):
+                        JobStatusView(jobID: jobID, jobService: jobService)
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Log Out") {
@@ -93,25 +102,35 @@ struct DashboardView: View {
 
                 ForEach(viewModel.videos) { video in
                     VStack(alignment: .leading, spacing: 12) {
-                        NavigationLink {
-                            ClipsView(videoID: video.id, jobID: video.latestJobID, clipService: clipService)
+                        Button {
+                            navigationPath.append(primaryRoute(for: video))
                         } label: {
                             VideoRow(video: video)
                         }
+                        .buttonStyle(.plain)
 
                         if let latestJobID = video.latestJobID {
-                            NavigationLink {
-                                JobStatusView(jobID: latestJobID, jobService: jobService)
+                            Button {
+                                navigationPath.append(.job(jobID: latestJobID))
                             } label: {
                                 Label("View processing job", systemImage: "clock.arrow.circlepath")
                                     .font(.footnote)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 4)
                 }
             }
         }
+    }
+
+    private func primaryRoute(for video: Video) -> DashboardRoute {
+        if let latestJobID = video.latestJobID, video.status.opensJobStatusByDefault {
+            return .job(jobID: latestJobID)
+        }
+
+        return .clips(videoID: video.id, jobID: video.latestJobID)
     }
 
     private var currentUser: User? {
@@ -135,6 +154,22 @@ struct DashboardView: View {
                     isRefreshingUser = false
                 }
             }
+        }
+    }
+}
+
+private enum DashboardRoute: Hashable {
+    case clips(videoID: String, jobID: String?)
+    case job(jobID: String)
+}
+
+private extension VideoStatus {
+    var opensJobStatusByDefault: Bool {
+        switch self {
+        case .uploading, .uploaded, .queued, .processing, .unknown:
+            return true
+        case .processed, .completed, .ready, .failed:
+            return false
         }
     }
 }
