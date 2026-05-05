@@ -9,7 +9,7 @@ import Foundation
 
 protocol AuthServiceProtocol {
     func login(email: String, password: String) async throws -> AuthResponse
-    func register(name: String, email: String, password: String) async throws -> AuthResponse
+    func register(email: String, password: String) async throws -> AuthResponse
     func restoreSession() async throws -> User?
     func logout() throws
 }
@@ -37,7 +37,7 @@ final class AuthService: AuthServiceProtocol {
         return response
     }
 
-    func register(name: String, email: String, password: String) async throws -> AuthResponse {
+    func register(email: String, password: String) async throws -> AuthResponse {
         let body = RegisterRequest(email: email, password: password)
         let endpoint = APIEndpoint(
             path: "/auth/register",

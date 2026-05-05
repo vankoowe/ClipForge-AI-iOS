@@ -50,18 +50,13 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func register(name: String, email: String, password: String) async {
+    func register(email: String, password: String) async {
         guard validate(email: email, password: password) else {
             return
         }
 
-        guard !name.trimmed.isEmpty else {
-            errorMessage = "Enter your name."
-            return
-        }
-
         await performAuthAction {
-            try await authService.register(name: name.trimmed, email: email.trimmed, password: password)
+            try await authService.register(email: email.trimmed, password: password)
         }
     }
 

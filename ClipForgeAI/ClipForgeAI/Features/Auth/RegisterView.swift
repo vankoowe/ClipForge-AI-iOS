@@ -11,10 +11,8 @@ struct RegisterView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authViewModel: AuthViewModel
 
-    @State private var name = ""
     @State private var email = ""
     @State private var password = ""
-    @FocusState private var isNameFocused: Bool
     @FocusState private var isEmailFocused: Bool
     @FocusState private var isPasswordFocused: Bool
 
@@ -49,17 +47,6 @@ struct RegisterView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(spacing: 12) {
-                    AuthInputField(
-                        title: "Name",
-                        systemImage: "person.fill",
-                        text: $name,
-                        isFocused: $isNameFocused
-                    )
-                    .textContentType(.name)
-                    .onSubmit {
-                        isEmailFocused = true
-                    }
-
                     AuthInputField(
                         title: "Email",
                         systemImage: "envelope.fill",
@@ -105,7 +92,7 @@ struct RegisterView: View {
 
     private func createAccount() {
         Task {
-            await authViewModel.register(name: name, email: email, password: password)
+            await authViewModel.register(email: email, password: password)
         }
     }
 }

@@ -10,6 +10,10 @@ import Foundation
 struct APIConfiguration {
     let baseURL: URL
 
+    static let temporaryBackend = APIConfiguration(
+        baseURL: URL(string: "http://178.105.63.236/api")!
+    )
+
     static let localDevelopment = APIConfiguration(
         baseURL: URL(string: "http://127.0.0.1:3000/api")!
     )
@@ -27,7 +31,7 @@ struct APIConfiguration {
             let rawValue,
             let url = URL(string: rawValue)
         else {
-            return .localDevelopment
+            return .temporaryBackend
         }
 
         return APIConfiguration(baseURL: url)
