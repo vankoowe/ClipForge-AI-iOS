@@ -22,8 +22,10 @@ final class UploadClient: UploadClientProtocol {
         var request = URLRequest(url: uploadURL)
         request.httpMethod = HTTPMethod.put.rawValue
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        NetworkLogger.logRawUploadRequest(fileURL: fileURL, uploadURL: uploadURL, contentType: contentType)
 
         let (_, response) = try await urlSession.upload(for: request, fromFile: fileURL)
+        NetworkLogger.logRawUploadResponse(response)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AppError.invalidResponse

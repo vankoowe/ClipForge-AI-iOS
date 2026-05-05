@@ -34,17 +34,23 @@ final class UploadService: UploadServiceProtocol {
         let contentType = mimeType(for: fileURL)
         let fileSizeBytes = try fileSizeBytes(for: fileURL)
         let durationSeconds = try await durationSeconds(for: fileURL)
+        NetworkLogger.logUploadStage(
+            "started file=\"\(fileName)\" contentType=\"\(contentType)\" fileSizeBytes=\(fileSizeBytes) durationSeconds=\(durationSeconds)"
+        )
+
         let uploadURLResponse = try await requestUploadURL(
             fileName: fileName,
             contentType: contentType,
             fileSizeBytes: fileSizeBytes
         )
+        NetworkLogger.logUploadStage("presigned URL received file=\"\(fileName)\"")
 
         try await uploadClient.upload(
             fileURL: fileURL,
             to: uploadURLResponse.uploadURL,
             contentType: contentType
         )
+        NetworkLogger.logUploadStage("raw upload completed file=\"\(fileName)\"")
 
         let video = try await createVideoRecord(
             fileKey: uploadURLResponse.fileKey,
@@ -53,8 +59,10 @@ final class UploadService: UploadServiceProtocol {
             durationSeconds: durationSeconds,
             fileSizeBytes: fileSizeBytes
         )
+        NetworkLogger.logUploadStage("video record created id=\"\(video.id)\" file=\"\(fileName)\"")
 
         let processResponse = try await processVideo(videoID: video.id)
+        NetworkLogger.logUploadStage("processing job created jobId=\"\(processResponse.jobID)\" videoId=\"\(video.id)\"")
         return video.with(latestJobID: processResponse.jobID, status: .processing)
     }
 

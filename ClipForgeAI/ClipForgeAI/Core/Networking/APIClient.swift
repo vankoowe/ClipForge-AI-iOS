@@ -49,13 +49,16 @@ final class APIClient: APIClientProtocol {
         canRefreshToken: Bool
     ) async throws -> Response {
         let request = try buildRequest(for: endpoint)
+        NetworkLogger.logRequest(request, endpoint: endpoint, isRetry: !canRefreshToken)
 
         do {
             let (data, response) = try await urlSession.data(for: request)
+            NetworkLogger.logResponse(response, data: data, endpoint: endpoint)
 
             if isUnauthorized(response),
                endpoint.requiresAuth,
                canRefreshToken {
+                NetworkLogger.logRefreshAttempt()
                 try await refreshTokens()
                 return try await performRequest(endpoint, as: responseType, canRefreshToken: false)
             }
@@ -130,9 +133,11 @@ final class APIClient: APIClientProtocol {
             requiresAuth: false
         )
         let request = try buildRequest(for: endpoint)
+        NetworkLogger.logRequest(request, endpoint: endpoint)
 
         do {
             let (data, response) = try await urlSession.data(for: request)
+            NetworkLogger.logResponse(response, data: data, endpoint: endpoint)
             try validate(response: response, data: data)
             let refreshResponse: TokenRefreshResponse
 
@@ -160,16 +165,16 @@ final class APIClient: APIClientProtocol {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
-            let apiError = try? JSONDecoder.apiDecoder.decode(APIErrorResponse.self, from: data)
+            let apiError = BackendAPIErrorResponse.decode(from: data)
             let message = apiError?.resolvedMessage
 
             switch httpResponse.statusCode {
             case 401:
                 throw AppError.unauthorized(message: message)
             case 403:
-                throw AppError.forbidden
+                throw AppError.forbidden(message: message)
             case 404:
-                throw AppError.notFound
+                throw AppError.notFound(message: message)
             default:
                 throw AppError.server(
                     statusCode: httpResponse.statusCode,
@@ -184,18 +189,4 @@ struct EmptyResponse: Decodable {}
 
 private struct RefreshTokenRequest: Encodable {
     let refreshToken: String
-}
-
-private struct APIErrorResponse: Decodable {
-    let error: BackendError?
-    let message: String?
-
-    var resolvedMessage: String? {
-        error?.message ?? message
-    }
-}
-
-private struct BackendError: Decodable {
-    let statusCode: Int?
-    let message: String?
 }
