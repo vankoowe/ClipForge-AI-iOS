@@ -165,7 +165,7 @@ final class APIClient: APIClientProtocol {
 
             switch httpResponse.statusCode {
             case 401:
-                throw AppError.unauthorized
+                throw AppError.unauthorized(message: message)
             case 403:
                 throw AppError.forbidden
             case 404:
