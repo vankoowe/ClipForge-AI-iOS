@@ -27,6 +27,10 @@ final class AppContainer: ObservableObject {
         tokenStore: tokenStore
     )
 
+    lazy var passwordResetService: any PasswordResetServiceProtocol = PasswordResetService(
+        apiClient: apiClient
+    )
+
     lazy var videoService: any VideoServiceProtocol = VideoService(
         apiClient: apiClient
     )

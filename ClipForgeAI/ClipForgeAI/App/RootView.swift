@@ -19,7 +19,7 @@ struct RootView: View {
                 LoadingStateView(message: "Checking session")
 
             case .loggedOut:
-                AuthFlowView()
+                AuthFlowView(passwordResetService: appContainer.passwordResetService)
 
             case .loggedIn:
                 DashboardView(

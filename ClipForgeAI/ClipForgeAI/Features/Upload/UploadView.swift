@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 struct UploadView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: UploadViewModel
     @State private var isFileImporterPresented = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     private let onUploadCompleted: (Video) -> Void
 
@@ -29,15 +31,35 @@ struct UploadView: View {
                 Section("Video") {
                     TextField("Title", text: $viewModel.title)
 
+                    PhotosPicker(
+                        selection: $selectedPhotoItem,
+                        matching: .videos,
+                        photoLibrary: .shared()
+                    ) {
+                        Label("Choose from Photos", systemImage: "photo.on.rectangle")
+                    }
+                    .disabled(viewModel.isUploading || viewModel.isImportingPhoto)
+
                     Button {
                         isFileImporterPresented = true
                     } label: {
-                        Label(viewModel.selectedFileName ?? "Choose video file", systemImage: "video.badge.plus")
+                        Label("Choose from Files", systemImage: "folder")
+                    }
+                    .disabled(viewModel.isUploading || viewModel.isImportingPhoto)
+
+                    if let selectedFileName = viewModel.selectedFileName {
+                        Label(selectedFileName, systemImage: "checkmark.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 if let errorMessage = viewModel.errorMessage {
                     ErrorMessageView(message: errorMessage)
+                }
+
+                if viewModel.isImportingPhoto {
+                    ProgressView("Importing video")
                 }
 
                 if viewModel.isUploading {
@@ -73,6 +95,12 @@ struct UploadView: View {
                     viewModel.selectFile(url)
                 case .failure(let error):
                     viewModel.setError(error)
+                }
+            }
+            .onChange(of: selectedPhotoItem) { _, item in
+                Task {
+                    await viewModel.importPhotoItem(item)
+                    selectedPhotoItem = nil
                 }
             }
         }

@@ -73,19 +73,26 @@ struct LoginView: View {
                     action: signIn
                 )
 
-                NavigationLink(value: AuthRoute.register) {
-                    HStack(spacing: 5) {
-                        Text("New to ClipForge AI?")
-                            .foregroundStyle(.white.opacity(0.68))
-
+                HStack(spacing: 12) {
+                    NavigationLink(value: AuthRoute.register) {
                         Text("Create account")
-                            .fontWeight(.bold)
+                            .font(.subheadline.weight(.bold))
                             .foregroundStyle(Color(red: 0.47, green: 0.95, blue: 0.88))
+                            .frame(maxWidth: .infinity)
                     }
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 2)
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: 1, height: 18)
+
+                    NavigationLink(value: AuthRoute.forgotPassword) {
+                        Text("Forgot password?")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white.opacity(0.76))
+                            .frame(maxWidth: .infinity)
+                    }
                 }
+                .padding(.top, 2)
                 .disabled(authViewModel.isLoading)
             }
         }
