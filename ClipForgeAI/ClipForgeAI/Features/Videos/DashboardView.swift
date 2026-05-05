@@ -11,6 +11,7 @@ struct DashboardView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var viewModel: VideosViewModel
     @State private var isShowingUpload = false
+    @State private var isRefreshingUser = false
 
     private let uploadService: any UploadServiceProtocol
     private let jobService: any JobServiceProtocol
@@ -46,6 +47,7 @@ struct DashboardView: View {
                             Image(systemName: "square.and.arrow.up")
                         }
                         .accessibilityLabel("Upload video")
+                        .disabled(isEmailUnverified)
                     }
                 }
                 .sheet(isPresented: $isShowingUpload) {
@@ -67,13 +69,24 @@ struct DashboardView: View {
         if viewModel.isLoading && viewModel.videos.isEmpty {
             LoadingStateView(message: "Loading videos")
         } else if viewModel.videos.isEmpty {
-            EmptyStateView(
-                title: "No videos",
-                message: "Upload a source video to start processing clips.",
-                systemImage: "video"
-            )
+            VStack(spacing: 16) {
+                verificationNotice
+
+                if let errorMessage = viewModel.errorMessage {
+                    ErrorMessageView(message: errorMessage)
+                }
+
+                EmptyStateView(
+                    title: "No videos",
+                    message: isEmailUnverified ? "Verify your email before uploading source videos." : "Upload a source video to start processing clips.",
+                    systemImage: "video"
+                )
+            }
+            .padding()
         } else {
             List {
+                verificationNotice
+
                 if let errorMessage = viewModel.errorMessage {
                     ErrorMessageView(message: errorMessage)
                 }
@@ -99,6 +112,72 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private var currentUser: User? {
+        authViewModel.authState.user
+    }
+
+    private var isEmailUnverified: Bool {
+        currentUser?.isEmailVerified == false
+    }
+
+    @ViewBuilder
+    private var verificationNotice: some View {
+        if isEmailUnverified {
+            EmailVerificationNotice(
+                email: currentUser?.email,
+                isRefreshing: isRefreshingUser
+            ) {
+                Task {
+                    isRefreshingUser = true
+                    await authViewModel.refreshCurrentUser()
+                    isRefreshingUser = false
+                }
+            }
+        }
+    }
+}
+
+private struct EmailVerificationNotice: View {
+    let email: String?
+    let isRefreshing: Bool
+    let refreshAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Verify your email to upload", systemImage: "envelope.badge.shield.half.filled")
+                .font(.headline)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button(action: refreshAction) {
+                if isRefreshing {
+                    ProgressView()
+                } else {
+                    Label("Refresh Status", systemImage: "arrow.clockwise")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isRefreshing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var message: String {
+        if let email {
+            return "The backend requires \(email) to be verified before upload and processing are available."
+        }
+
+        return "The backend requires your email to be verified before upload and processing are available."
     }
 }
 

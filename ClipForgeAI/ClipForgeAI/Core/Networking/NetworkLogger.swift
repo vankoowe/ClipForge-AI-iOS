@@ -13,7 +13,7 @@ enum NetworkLogger {
         let method = request.httpMethod ?? endpoint.method.rawValue
         let auth = endpoint.requiresAuth ? "required" : "none"
         let retry = isRetry ? " retry=true" : ""
-        print("[ClipForgeAPI] -> \(method) \(sanitizedURL(request.url)) auth=\(auth)\(retry)")
+        print("[ClipForgeAPI] -> \(method) \(sanitizedURL(request.url, redactsQuery: false)) auth=\(auth)\(retry)")
         #endif
     }
 
@@ -30,7 +30,8 @@ enum NetworkLogger {
         let detailSuffix = details.map { " details=\"\($0)\"" } ?? ""
         let messageSuffix = message.map { " message=\"\($0)\"" } ?? ""
 
-        print("[ClipForgeAPI] <- \(httpResponse.statusCode) \(endpoint.method.rawValue) \(endpoint.path)\(messageSuffix)\(detailSuffix)")
+        let path = errorResponse?.path ?? endpoint.path
+        print("[ClipForgeAPI] <- \(httpResponse.statusCode) \(endpoint.method.rawValue) \(path)\(messageSuffix)\(detailSuffix)")
         #endif
     }
 
@@ -49,7 +50,7 @@ enum NetworkLogger {
     static func logRawUploadRequest(fileURL: URL, uploadURL: URL, contentType: String) {
         #if DEBUG
         let fileName = fileURL.lastPathComponent
-        print("[ClipForgeUpload] raw PUT started file=\"\(fileName)\" contentType=\"\(contentType)\" destination=\"\(sanitizedURL(uploadURL))\"")
+        print("[ClipForgeUpload] raw PUT started file=\"\(fileName)\" contentType=\"\(contentType)\" destination=\"\(sanitizedURL(uploadURL, redactsQuery: true))\"")
         #endif
     }
 
@@ -64,13 +65,16 @@ enum NetworkLogger {
         #endif
     }
 
-    private static func sanitizedURL(_ url: URL?) -> String {
+    private static func sanitizedURL(_ url: URL?, redactsQuery: Bool) -> String {
         guard let url,
               var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return "unknown-url"
         }
 
-        components.query = nil
+        if redactsQuery {
+            components.query = nil
+        }
+
         components.fragment = nil
         return components.url?.absoluteString ?? "unknown-url"
     }

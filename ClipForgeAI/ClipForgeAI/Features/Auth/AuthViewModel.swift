@@ -70,6 +70,22 @@ final class AuthViewModel: ObservableObject {
         authState = .loggedOut
     }
 
+    func refreshCurrentUser() async {
+        guard case .loggedIn = authState else {
+            return
+        }
+
+        do {
+            if let user = try await authService.restoreSession() {
+                authState = .loggedIn(user)
+            } else {
+                authState = .loggedOut
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func validate(email: String, password: String) -> Bool {
         guard email.trimmed.isValidEmail else {
             errorMessage = "Enter a valid email address."
