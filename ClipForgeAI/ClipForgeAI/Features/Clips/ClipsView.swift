@@ -11,7 +11,7 @@ struct ClipsView: View {
     @StateObject private var viewModel: ClipsViewModel
 
     init(
-        videoID: String,
+        videoID: String?,
         jobID: String?,
         clipService: any ClipServiceProtocol,
         initialClips: [Clip] = []
@@ -32,6 +32,7 @@ struct ClipsView: View {
                 ClipsHeader(
                     count: viewModel.clips.count,
                     isGenerating: viewModel.isGenerating,
+                    canGenerate: viewModel.canGenerateClips,
                     generateAction: {
                         Task {
                             await viewModel.generateClips()
@@ -75,6 +76,7 @@ struct ClipsView: View {
 private struct ClipsHeader: View {
     let count: Int
     let isGenerating: Bool
+    let canGenerate: Bool
     let generateAction: () -> Void
 
     var body: some View {
@@ -98,16 +100,18 @@ private struct ClipsHeader: View {
                     .background(Color(red: 0.06, green: 0.45, blue: 0.47).opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
 
-            Button(action: generateAction) {
-                Label(isGenerating ? "Generating" : "Generate clips", systemImage: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color(red: 0.06, green: 0.45, blue: 0.47), in: RoundedRectangle(cornerRadius: 8))
+            if canGenerate {
+                Button(action: generateAction) {
+                    Label(isGenerating ? "Generating" : "Generate clips", systemImage: "sparkles")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(Color(red: 0.06, green: 0.45, blue: 0.47), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .disabled(isGenerating)
+                .opacity(isGenerating ? 0.65 : 1)
             }
-            .disabled(isGenerating)
-            .opacity(isGenerating ? 0.65 : 1)
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))

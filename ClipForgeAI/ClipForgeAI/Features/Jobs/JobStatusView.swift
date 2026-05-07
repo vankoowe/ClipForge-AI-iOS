@@ -47,11 +47,11 @@ struct JobStatusView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    if let clipsCount = job.clipsCount {
-                        if clipsCount > 0, let videoID = job.videoID {
+                    if let clipsCount = job.availableClipsCount {
+                        if clipsCount > 0 {
                             NavigationLink {
                                 ClipsView(
-                                    videoID: videoID,
+                                    videoID: job.videoID,
                                     jobID: job.id,
                                     clipService: clipService,
                                     initialClips: job.clips ?? []

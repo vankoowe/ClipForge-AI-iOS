@@ -16,12 +16,16 @@ final class ClipsViewModel: ObservableObject {
     @Published private(set) var isGenerating = false
     @Published var errorMessage: String?
 
-    private let videoID: String
+    private let videoID: String?
     private var jobID: String?
     private let clipService: any ClipServiceProtocol
 
+    var canGenerateClips: Bool {
+        videoID?.nilIfEmpty != nil
+    }
+
     init(
-        videoID: String,
+        videoID: String?,
         jobID: String?,
         clipService: any ClipServiceProtocol,
         initialClips: [Clip] = []
@@ -59,6 +63,11 @@ final class ClipsViewModel: ObservableObject {
     }
 
     func generateClips() async {
+        guard let videoID = videoID?.nilIfEmpty else {
+            errorMessage = "This job can show generated clips, but it does not include a video ID for starting a new generation."
+            return
+        }
+
         isGenerating = true
         errorMessage = nil
 

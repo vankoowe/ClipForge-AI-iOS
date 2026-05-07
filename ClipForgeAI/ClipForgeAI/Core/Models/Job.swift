@@ -31,6 +31,10 @@ struct Job: Codable, Identifiable, Equatable, Hashable {
         Int((normalizedProgress * 100).rounded())
     }
 
+    var availableClipsCount: Int? {
+        clipsCount ?? clips?.count
+    }
+
     var displayStatus: JobStatus {
         if hasProcessingError, !status.isTerminal {
             return .failed
