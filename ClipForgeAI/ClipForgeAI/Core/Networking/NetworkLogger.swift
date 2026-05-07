@@ -47,6 +47,12 @@ enum NetworkLogger {
         #endif
     }
 
+    static func logClipLookup(_ message: String) {
+        #if DEBUG
+        print("[ClipForgeClips] \(message)")
+        #endif
+    }
+
     static func logRawUploadRequest(fileURL: URL, uploadURL: URL, contentType: String) {
         #if DEBUG
         let fileName = fileURL.lastPathComponent

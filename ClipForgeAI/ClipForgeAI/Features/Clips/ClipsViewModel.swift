@@ -45,13 +45,17 @@ final class ClipsViewModel: ObservableObject {
         }
 
         do {
-            guard let resolvedJobID = try await resolvedJobID() else {
+            let fetchedClips: [Clip]
+
+            if let resolvedJobID = jobID?.nilIfEmpty {
+                fetchedClips = try await clipService.fetchClips(jobID: resolvedJobID)
+            } else if let videoID = videoID?.nilIfEmpty {
+                fetchedClips = try await clipService.fetchClips(videoID: videoID)
+            } else {
                 clips = []
-                errorMessage = "The video does not include a processing job yet."
+                errorMessage = "This clips screen needs a video or processing job to load results."
                 return
             }
-
-            let fetchedClips = try await clipService.fetchClips(jobID: resolvedJobID)
 
             if !fetchedClips.isEmpty || clips.isEmpty {
                 clips = fetchedClips
@@ -59,20 +63,6 @@ final class ClipsViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    private func resolvedJobID() async throws -> String? {
-        if let jobID = jobID?.nilIfEmpty {
-            return jobID
-        }
-
-        guard let videoID = videoID?.nilIfEmpty else {
-            return nil
-        }
-
-        let latestJobID = try await clipService.fetchLatestJobID(videoID: videoID)
-        jobID = latestJobID
-        return latestJobID
     }
 
     func generateClips() async {
