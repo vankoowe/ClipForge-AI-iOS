@@ -10,8 +10,20 @@ import SwiftUI
 struct ClipsView: View {
     @StateObject private var viewModel: ClipsViewModel
 
-    init(videoID: String, jobID: String?, clipService: any ClipServiceProtocol) {
-        _viewModel = StateObject(wrappedValue: ClipsViewModel(videoID: videoID, jobID: jobID, clipService: clipService))
+    init(
+        videoID: String,
+        jobID: String?,
+        clipService: any ClipServiceProtocol,
+        initialClips: [Clip] = []
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: ClipsViewModel(
+                videoID: videoID,
+                jobID: jobID,
+                clipService: clipService,
+                initialClips: initialClips
+            )
+        )
     }
 
     var body: some View {

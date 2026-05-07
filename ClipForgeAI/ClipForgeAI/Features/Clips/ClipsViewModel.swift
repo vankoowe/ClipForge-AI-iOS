@@ -20,10 +20,16 @@ final class ClipsViewModel: ObservableObject {
     private var jobID: String?
     private let clipService: any ClipServiceProtocol
 
-    init(videoID: String, jobID: String?, clipService: any ClipServiceProtocol) {
+    init(
+        videoID: String,
+        jobID: String?,
+        clipService: any ClipServiceProtocol,
+        initialClips: [Clip] = []
+    ) {
         self.videoID = videoID
         self.jobID = jobID
         self.clipService = clipService
+        self.clips = initialClips
     }
 
     func loadClips() async {
@@ -36,11 +42,17 @@ final class ClipsViewModel: ObservableObject {
 
         do {
             guard let jobID else {
-                clips = []
+                if clips.isEmpty {
+                    clips = []
+                }
                 return
             }
 
-            clips = try await clipService.fetchClips(jobID: jobID)
+            let fetchedClips = try await clipService.fetchClips(jobID: jobID)
+
+            if !fetchedClips.isEmpty || clips.isEmpty {
+                clips = fetchedClips
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

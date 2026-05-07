@@ -23,9 +23,19 @@ struct Clip: Codable, Identifiable, Equatable, Hashable {
         case videoId
         case title
         case startTime
+        case startSeconds
+        case start
         case endTime
+        case endSeconds
+        case end
         case downloadURL
         case downloadUrl
+        case clipURL
+        case clipUrl
+        case renderedURL
+        case renderedUrl
+        case outputURL
+        case outputUrl
         case url
         case publicURL
         case publicUrl
@@ -65,11 +75,25 @@ struct Clip: Codable, Identifiable, Equatable, Hashable {
         self.id = id
         self.videoID = try container.decodeFirstPresent(String.self, forKeys: [.videoID, .videoId]) ?? ""
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Generated clip"
-        self.startTime = try container.decodeIfPresent(Double.self, forKey: .startTime) ?? 0
-        self.endTime = try container.decodeIfPresent(Double.self, forKey: .endTime) ?? 0
+        self.startTime = try container.decodeFirstPresent(Double.self, forKeys: [.startTime, .startSeconds, .start]) ?? 0
+        self.endTime = try container.decodeFirstPresent(Double.self, forKeys: [.endTime, .endSeconds, .end]) ?? 0
         self.downloadURL = try container.decodeFirstPresent(
             URL.self,
-            forKeys: [.downloadURL, .downloadUrl, .url, .publicURL, .publicUrl, .fileURL, .fileUrl]
+            forKeys: [
+                .downloadURL,
+                .downloadUrl,
+                .clipURL,
+                .clipUrl,
+                .renderedURL,
+                .renderedUrl,
+                .outputURL,
+                .outputUrl,
+                .url,
+                .publicURL,
+                .publicUrl,
+                .fileURL,
+                .fileUrl
+            ]
         )
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
     }

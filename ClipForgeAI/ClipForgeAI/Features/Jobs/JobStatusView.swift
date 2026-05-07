@@ -9,9 +9,11 @@ import SwiftUI
 
 struct JobStatusView: View {
     @StateObject private var viewModel: JobStatusViewModel
+    private let clipService: any ClipServiceProtocol
 
-    init(jobID: String, jobService: any JobServiceProtocol) {
+    init(jobID: String, jobService: any JobServiceProtocol, clipService: any ClipServiceProtocol) {
         _viewModel = StateObject(wrappedValue: JobStatusViewModel(jobID: jobID, jobService: jobService))
+        self.clipService = clipService
     }
 
     var body: some View {
@@ -46,7 +48,20 @@ struct JobStatusView: View {
                     }
 
                     if let clipsCount = job.clipsCount {
-                        LabeledContent("Clips", value: "\(clipsCount)")
+                        if clipsCount > 0, let videoID = job.videoID {
+                            NavigationLink {
+                                ClipsView(
+                                    videoID: videoID,
+                                    jobID: job.id,
+                                    clipService: clipService,
+                                    initialClips: job.clips ?? []
+                                )
+                            } label: {
+                                LabeledContent("Clips", value: "\(clipsCount)")
+                            }
+                        } else {
+                            LabeledContent("Clips", value: "\(clipsCount)")
+                        }
                     }
                 }
 
@@ -79,6 +94,6 @@ struct JobStatusView: View {
     let container = AppContainer()
 
     NavigationStack {
-        JobStatusView(jobID: "job_123", jobService: container.jobService)
+        JobStatusView(jobID: "job_123", jobService: container.jobService, clipService: container.clipService)
     }
 }

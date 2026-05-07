@@ -39,7 +39,7 @@ struct DashboardView: View {
                     case .clips(let videoID, let jobID):
                         ClipsView(videoID: videoID, jobID: jobID, clipService: clipService)
                     case .job(let jobID):
-                        JobStatusView(jobID: jobID, jobService: jobService)
+                        JobStatusView(jobID: jobID, jobService: jobService, clipService: clipService)
                     }
                 }
                 .toolbar {
@@ -126,7 +126,7 @@ struct DashboardView: View {
     }
 
     private func primaryRoute(for video: Video) -> DashboardRoute {
-        if let latestJobID = video.latestJobID, video.status.opensJobStatusByDefault {
+        if let latestJobID = video.latestJobID {
             return .job(jobID: latestJobID)
         }
 
@@ -161,17 +161,6 @@ struct DashboardView: View {
 private enum DashboardRoute: Hashable {
     case clips(videoID: String, jobID: String?)
     case job(jobID: String)
-}
-
-private extension VideoStatus {
-    var opensJobStatusByDefault: Bool {
-        switch self {
-        case .uploading, .uploaded, .queued, .processing, .unknown:
-            return true
-        case .processed, .completed, .ready, .failed:
-            return false
-        }
-    }
 }
 
 private struct EmailVerificationNotice: View {
