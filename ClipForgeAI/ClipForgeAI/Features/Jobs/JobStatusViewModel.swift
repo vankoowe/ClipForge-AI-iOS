@@ -45,7 +45,7 @@ final class JobStatusViewModel: ObservableObject {
                     let job = try await jobService.fetchJob(id: jobID)
                     self.job = job
 
-                    if job.status.isTerminal {
+                    if job.shouldStopPolling {
                         self.isPolling = false
                         self.pollingTask = nil
                         return

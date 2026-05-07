@@ -11,9 +11,9 @@ enum AppError: LocalizedError {
     case invalidURL
     case invalidResponse
     case requestFailed(Error)
-    case unauthorized
-    case forbidden
-    case notFound
+    case unauthorized(message: String?)
+    case forbidden(message: String?)
+    case notFound(message: String?)
     case server(statusCode: Int, message: String?)
     case decoding(Error)
     case encoding(Error)
@@ -30,12 +30,12 @@ enum AppError: LocalizedError {
             return "The server returned an invalid response."
         case .requestFailed(let error):
             return error.localizedDescription
-        case .unauthorized:
-            return "Your session has expired. Please sign in again."
-        case .forbidden:
-            return "You do not have permission to perform this action."
-        case .notFound:
-            return "The requested resource was not found."
+        case .unauthorized(let message):
+            return message ?? "Your session has expired. Please sign in again."
+        case .forbidden(let message):
+            return message ?? "You do not have permission to perform this action."
+        case .notFound(let message):
+            return message ?? "The requested resource was not found."
         case .server(let statusCode, let message):
             return message ?? "The server returned an error. Status code: \(statusCode)."
         case .decoding:

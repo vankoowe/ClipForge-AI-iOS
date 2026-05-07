@@ -31,6 +31,10 @@ struct Video: Codable, Identifiable, Equatable, Hashable {
         case thumbnailUrl
         case sourceURL
         case sourceUrl
+        case originalFileURL
+        case originalFileUrl
+        case publicFileURL
+        case publicFileUrl
         case latestJobID
         case latestJobId
         case jobID
@@ -79,7 +83,10 @@ struct Video: Codable, Identifiable, Equatable, Hashable {
         self.status = try container.decodeIfPresent(VideoStatus.self, forKey: .status) ?? .unknown
         self.durationSeconds = try container.decodeFirstPresent(Double.self, forKeys: [.durationSeconds, .duration])
         self.thumbnailURL = try container.decodeFirstPresent(URL.self, forKeys: [.thumbnailURL, .thumbnailUrl])
-        self.sourceURL = try container.decodeFirstPresent(URL.self, forKeys: [.sourceURL, .sourceUrl])
+        self.sourceURL = try container.decodeFirstPresent(
+            URL.self,
+            forKeys: [.sourceURL, .sourceUrl, .originalFileURL, .originalFileUrl, .publicFileURL, .publicFileUrl]
+        )
         self.latestJobID = try container.decodeFirstPresent(
             String.self,
             forKeys: [.latestJobID, .latestJobId, .jobID, .jobId]
@@ -101,6 +108,21 @@ struct Video: Codable, Identifiable, Equatable, Hashable {
         try container.encodeIfPresent(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
     }
+
+    func with(latestJobID: String?, status: VideoStatus? = nil) -> Video {
+        Video(
+            id: id,
+            title: title,
+            fileName: fileName,
+            status: status ?? self.status,
+            durationSeconds: durationSeconds,
+            thumbnailURL: thumbnailURL,
+            sourceURL: sourceURL,
+            latestJobID: latestJobID,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
 }
 
 enum VideoStatus: String, Codable, CaseIterable {
@@ -109,6 +131,7 @@ enum VideoStatus: String, Codable, CaseIterable {
     case queued
     case processing
     case processed
+    case completed
     case ready
     case failed
     case unknown
@@ -125,6 +148,8 @@ enum VideoStatus: String, Codable, CaseIterable {
             return "Processing"
         case .processed:
             return "Processed"
+        case .completed:
+            return "Completed"
         case .ready:
             return "Ready"
         case .failed:

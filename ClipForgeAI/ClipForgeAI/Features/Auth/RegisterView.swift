@@ -11,10 +11,8 @@ struct RegisterView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authViewModel: AuthViewModel
 
-    @State private var name = ""
     @State private var email = ""
     @State private var password = ""
-    @FocusState private var isNameFocused: Bool
     @FocusState private var isEmailFocused: Bool
     @FocusState private var isPasswordFocused: Bool
 
@@ -24,17 +22,9 @@ struct RegisterView: View {
             subtitle: "Create your ClipForge AI account.",
             showsArtwork: false
         ) {
-            Button {
+            AuthBackButton {
                 dismiss()
-            } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white.opacity(0.82))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.11), in: Capsule())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             AuthFormCard {
                 VStack(alignment: .leading, spacing: 6) {
@@ -49,17 +39,6 @@ struct RegisterView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(spacing: 12) {
-                    AuthInputField(
-                        title: "Name",
-                        systemImage: "person.fill",
-                        text: $name,
-                        isFocused: $isNameFocused
-                    )
-                    .textContentType(.name)
-                    .onSubmit {
-                        isEmailFocused = true
-                    }
-
                     AuthInputField(
                         title: "Email",
                         systemImage: "envelope.fill",
@@ -105,7 +84,7 @@ struct RegisterView: View {
 
     private func createAccount() {
         Task {
-            await authViewModel.register(name: name, email: email, password: password)
+            await authViewModel.register(email: email, password: password)
         }
     }
 }

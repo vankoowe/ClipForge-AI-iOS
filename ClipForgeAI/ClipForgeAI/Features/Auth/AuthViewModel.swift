@@ -50,18 +50,13 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func register(name: String, email: String, password: String) async {
+    func register(email: String, password: String) async {
         guard validate(email: email, password: password) else {
             return
         }
 
-        guard !name.trimmed.isEmpty else {
-            errorMessage = "Enter your name."
-            return
-        }
-
         await performAuthAction {
-            try await authService.register(name: name.trimmed, email: email.trimmed, password: password)
+            try await authService.register(email: email.trimmed, password: password)
         }
     }
 
@@ -73,6 +68,22 @@ final class AuthViewModel: ObservableObject {
         }
 
         authState = .loggedOut
+    }
+
+    func refreshCurrentUser() async {
+        guard case .loggedIn = authState else {
+            return
+        }
+
+        do {
+            if let user = try await authService.restoreSession() {
+                authState = .loggedIn(user)
+            } else {
+                authState = .loggedOut
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func validate(email: String, password: String) -> Bool {

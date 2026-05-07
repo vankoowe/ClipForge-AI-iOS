@@ -27,9 +27,15 @@ struct APICollectionResponse<Item: Decodable>: Decodable {
         }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let nestedResponse = try container.decodeIfPresent(APICollectionResponse<Item>.self, forKey: .data) {
+            self.items = nestedResponse.items
+            return
+        }
+
         self.items = try container.decodeFirstPresent(
             [Item].self,
-            forKeys: [.data, .items, .results, .videos, .clips, .jobs]
+            forKeys: [.items, .results, .videos, .clips, .jobs]
         ) ?? []
     }
 }

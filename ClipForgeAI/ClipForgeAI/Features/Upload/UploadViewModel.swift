@@ -7,12 +7,15 @@
 
 import Combine
 import Foundation
+import PhotosUI
+import SwiftUI
 
 @MainActor
 final class UploadViewModel: ObservableObject {
     @Published var title = ""
     @Published private(set) var selectedFileURL: URL?
     @Published private(set) var isUploading = false
+    @Published private(set) var isImportingPhoto = false
     @Published var errorMessage: String?
 
     var selectedFileName: String? {
@@ -20,20 +23,51 @@ final class UploadViewModel: ObservableObject {
     }
 
     var canUpload: Bool {
-        selectedFileURL != nil && !isUploading
+        selectedFileURL != nil && !isUploading && !isImportingPhoto
     }
 
     private let uploadService: any UploadServiceProtocol
+    private var temporaryImportedFileURL: URL?
 
     init(uploadService: any UploadServiceProtocol) {
         self.uploadService = uploadService
     }
 
     func selectFile(_ url: URL) {
+        clearTemporaryImportedFile()
         selectedFileURL = url
 
         if title.trimmed.isEmpty {
             title = url.deletingPathExtension().lastPathComponent
+        }
+    }
+
+    func importPhotoItem(_ item: PhotosPickerItem?) async {
+        guard let item else {
+            return
+        }
+
+        isImportingPhoto = true
+        errorMessage = nil
+
+        defer {
+            isImportingPhoto = false
+        }
+
+        do {
+            guard let pickedVideo = try await item.loadTransferable(type: PickedVideo.self) else {
+                throw AppError.missingFile
+            }
+
+            clearTemporaryImportedFile()
+            temporaryImportedFileURL = pickedVideo.url
+            selectedFileURL = pickedVideo.url
+
+            if title.trimmed.isEmpty {
+                title = pickedVideo.url.deletingPathExtension().lastPathComponent
+            }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -63,5 +97,14 @@ final class UploadViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+
+    private func clearTemporaryImportedFile() {
+        guard let temporaryImportedFileURL else {
+            return
+        }
+
+        try? FileManager.default.removeItem(at: temporaryImportedFileURL)
+        self.temporaryImportedFileURL = nil
     }
 }

@@ -5,6 +5,7 @@
 //  Created by Ivan Gamov on 28.04.26.
 //
 
+import AVFoundation
 import Foundation
 import UniformTypeIdentifiers
 
@@ -14,30 +15,67 @@ protocol UploadServiceProtocol {
 
 final class UploadService: UploadServiceProtocol {
     private let apiClient: any APIClientProtocol
-    private let urlSession: URLSession
+    private let uploadClient: any UploadClientProtocol
 
-    init(apiClient: any APIClientProtocol, urlSession: URLSession) {
+    init(apiClient: any APIClientProtocol, uploadClient: any UploadClientProtocol) {
         self.apiClient = apiClient
-        self.urlSession = urlSession
+        self.uploadClient = uploadClient
     }
 
     func uploadVideo(fileURL: URL, title: String) async throws -> Video {
+        let didStartSecurityScope = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartSecurityScope {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
         let fileName = fileURL.lastPathComponent
         let contentType = mimeType(for: fileURL)
-        let uploadURLResponse = try await requestUploadURL(fileName: fileName, contentType: contentType)
-
-        try await uploadFile(fileURL, to: uploadURLResponse.uploadURL, contentType: contentType)
-
-        return try await createVideoRecord(
-            title: title,
-            fileName: fileName,
-            storageKey: uploadURLResponse.storageKey,
-            sourceURL: uploadURLResponse.fileURL
+        let fileSizeBytes = try fileSizeBytes(for: fileURL)
+        let durationSeconds = try await durationSeconds(for: fileURL)
+        NetworkLogger.logUploadStage(
+            "started file=\"\(fileName)\" contentType=\"\(contentType)\" fileSizeBytes=\(fileSizeBytes) durationSeconds=\(durationSeconds)"
         )
+
+        let uploadURLResponse = try await requestUploadURL(
+            fileName: fileName,
+            contentType: contentType,
+            fileSizeBytes: fileSizeBytes
+        )
+        NetworkLogger.logUploadStage("presigned URL received file=\"\(fileName)\"")
+
+        try await uploadClient.upload(
+            fileURL: fileURL,
+            to: uploadURLResponse.uploadURL,
+            contentType: contentType
+        )
+        NetworkLogger.logUploadStage("raw upload completed file=\"\(fileName)\"")
+
+        let video = try await createVideoRecord(
+            fileKey: uploadURLResponse.fileKey,
+            originalFileURL: uploadURLResponse.publicFileURL,
+            fileName: fileName,
+            durationSeconds: durationSeconds,
+            fileSizeBytes: fileSizeBytes
+        )
+        NetworkLogger.logUploadStage("video record created id=\"\(video.id)\" file=\"\(fileName)\"")
+
+        let processResponse = try await processVideo(videoID: video.id)
+        NetworkLogger.logUploadStage("processing job created jobId=\"\(processResponse.jobID)\" videoId=\"\(video.id)\"")
+        return video.with(latestJobID: processResponse.jobID, status: .processing)
     }
 
-    private func requestUploadURL(fileName: String, contentType: String) async throws -> PresignedUploadResponse {
-        let body = UploadURLRequest(fileName: fileName, contentType: contentType)
+    private func requestUploadURL(
+        fileName: String,
+        contentType: String,
+        fileSizeBytes: Int64
+    ) async throws -> PresignedUploadResponse {
+        let body = UploadURLRequest(
+            fileName: fileName,
+            contentType: contentType,
+            fileSizeBytes: fileSizeBytes
+        )
         let endpoint = APIEndpoint(
             path: "/videos/upload-url",
             method: .post,
@@ -48,40 +86,19 @@ final class UploadService: UploadServiceProtocol {
         return response.value
     }
 
-    private func uploadFile(_ fileURL: URL, to uploadURL: URL, contentType: String) async throws {
-        var request = URLRequest(url: uploadURL)
-        request.httpMethod = HTTPMethod.put.rawValue
-        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-
-        let didStartSecurityScope = fileURL.startAccessingSecurityScopedResource()
-        defer {
-            if didStartSecurityScope {
-                fileURL.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        let (_, response) = try await urlSession.upload(for: request, fromFile: fileURL)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AppError.invalidResponse
-        }
-
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            throw AppError.uploadFailed(statusCode: httpResponse.statusCode)
-        }
-    }
-
     private func createVideoRecord(
-        title: String,
+        fileKey: String,
+        originalFileURL: URL,
         fileName: String,
-        storageKey: String,
-        sourceURL: URL?
+        durationSeconds: Int,
+        fileSizeBytes: Int64
     ) async throws -> Video {
         let body = CreateVideoRecordRequest(
-            title: title,
+            fileKey: fileKey,
+            originalFileUrl: originalFileURL,
             fileName: fileName,
-            storageKey: storageKey,
-            sourceURL: sourceURL
+            durationSeconds: durationSeconds,
+            fileSizeBytes: fileSizeBytes
         )
         let endpoint = APIEndpoint(
             path: "/videos",
@@ -91,6 +108,41 @@ final class UploadService: UploadServiceProtocol {
 
         let response = try await apiClient.request(endpoint, as: APIObjectResponse<Video>.self)
         return response.value
+    }
+
+    private func processVideo(videoID: String) async throws -> ProcessVideoResponse {
+        let body = ProcessVideoRequest(selectedFeatures: ProcessingFeature.allCases)
+        let endpoint = APIEndpoint(
+            path: "/videos/\(videoID)/process",
+            method: .post,
+            body: try APIEndpoint.jsonBody(body)
+        )
+
+        let response = try await apiClient.request(endpoint, as: APIObjectResponse<ProcessVideoResponse>.self)
+        return response.value
+    }
+
+    private func fileSizeBytes(for fileURL: URL) throws -> Int64 {
+        let values = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+
+        if let fileSize = values.fileSize {
+            return Int64(fileSize)
+        }
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        return (attributes[.size] as? NSNumber)?.int64Value ?? 0
+    }
+
+    private func durationSeconds(for fileURL: URL) async throws -> Int {
+        let asset = AVURLAsset(url: fileURL)
+        let duration = try await asset.load(.duration)
+        let seconds = CMTimeGetSeconds(duration)
+
+        guard seconds.isFinite else {
+            return 0
+        }
+
+        return max(Int(ceil(seconds)), 0)
     }
 
     private func mimeType(for fileURL: URL) -> String {
@@ -105,34 +157,39 @@ final class UploadService: UploadServiceProtocol {
 private struct UploadURLRequest: Encodable {
     let fileName: String
     let contentType: String
+    let fileSizeBytes: Int64
 }
 
 private struct CreateVideoRecordRequest: Encodable {
-    let title: String
+    let fileKey: String
+    let originalFileUrl: URL
     let fileName: String
-    let storageKey: String
-    let sourceURL: URL?
+    let durationSeconds: Int
+    let fileSizeBytes: Int64
+}
+
+private struct ProcessVideoRequest: Encodable {
+    let selectedFeatures: [ProcessingFeature]
 }
 
 private struct PresignedUploadResponse: Decodable {
     let uploadURL: URL
-    let fileURL: URL?
-    let storageKey: String
+    let publicFileURL: URL
+    let fileKey: String
 
     private enum CodingKeys: String, CodingKey {
         case uploadURL
         case uploadUrl
-        case url
-        case fileURL
-        case fileUrl
-        case storageKey
+        case publicFileURL
+        case publicFileUrl
+        case fileKey
         case key
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        guard let uploadURL = try container.decodeFirstPresent(URL.self, forKeys: [.uploadURL, .uploadUrl, .url]) else {
+        guard let uploadURL = try container.decodeFirstPresent(URL.self, forKeys: [.uploadURL, .uploadUrl]) else {
             throw DecodingError.keyNotFound(
                 CodingKeys.uploadURL,
                 DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Upload URL is required.")
@@ -140,8 +197,22 @@ private struct PresignedUploadResponse: Decodable {
         }
 
         self.uploadURL = uploadURL
-        self.fileURL = try container.decodeFirstPresent(URL.self, forKeys: [.fileURL, .fileUrl])
-        self.storageKey = try container.decodeFirstPresent(String.self, forKeys: [.storageKey, .key])
-            ?? uploadURL.lastPathComponent
+
+        guard let publicFileURL = try container.decodeFirstPresent(URL.self, forKeys: [.publicFileURL, .publicFileUrl]) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.publicFileUrl,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Public file URL is required.")
+            )
+        }
+
+        guard let fileKey = try container.decodeFirstPresent(String.self, forKeys: [.fileKey, .key]) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.fileKey,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "File key is required.")
+            )
+        }
+
+        self.publicFileURL = publicFileURL
+        self.fileKey = fileKey
     }
 }

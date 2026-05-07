@@ -8,25 +8,25 @@
 import Foundation
 import Security
 
-protocol TokenStore {
-    func readToken() -> String?
-    func saveToken(_ token: String) throws
-    func deleteToken() throws
+protocol AuthStore {
+    func readTokens() -> AuthTokens?
+    func saveTokens(_ tokens: AuthTokens) throws
+    func deleteTokens() throws
 }
 
-final class KeychainTokenStore: TokenStore {
+final class KeychainTokenStore: AuthStore {
     private let service: String
     private let account: String
 
     init(
         service: String = Bundle.main.bundleIdentifier ?? "com.ClipForgeAI.ClipForgeAI",
-        account: String = "jwt"
+        account: String = "auth_tokens"
     ) {
         self.service = service
         self.account = account
     }
 
-    func readToken() -> String? {
+    func readTokens() -> AuthTokens? {
         var query = baseQuery()
         query[kSecReturnData] = true
         query[kSecMatchLimit] = kSecMatchLimitOne
@@ -41,14 +41,14 @@ final class KeychainTokenStore: TokenStore {
             return nil
         }
 
-        return String(data: data, encoding: .utf8)
+        return try? JSONDecoder.apiDecoder.decode(AuthTokens.self, from: data)
     }
 
-    func saveToken(_ token: String) throws {
-        try deleteTokenIgnoringMissing()
+    func saveTokens(_ tokens: AuthTokens) throws {
+        try deleteTokensIgnoringMissing()
 
         var query = baseQuery()
-        query[kSecValueData] = Data(token.utf8)
+        query[kSecValueData] = try JSONEncoder.apiEncoder.encode(tokens)
         query[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -58,7 +58,7 @@ final class KeychainTokenStore: TokenStore {
         }
     }
 
-    func deleteToken() throws {
+    func deleteTokens() throws {
         let status = SecItemDelete(baseQuery() as CFDictionary)
 
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -66,7 +66,7 @@ final class KeychainTokenStore: TokenStore {
         }
     }
 
-    private func deleteTokenIgnoringMissing() throws {
+    private func deleteTokensIgnoringMissing() throws {
         let status = SecItemDelete(baseQuery() as CFDictionary)
 
         guard status == errSecSuccess || status == errSecItemNotFound else {

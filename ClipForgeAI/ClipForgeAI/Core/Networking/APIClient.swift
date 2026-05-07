@@ -20,26 +20,49 @@ protocol APIClientProtocol {
 final class APIClient: APIClientProtocol {
     private let configuration: APIConfiguration
     private let urlSession: URLSession
-    private let authTokenProvider: () -> String?
+    private let authStore: any AuthStore
 
     init(
         configuration: APIConfiguration,
         urlSession: URLSession = .shared,
-        authTokenProvider: @escaping () -> String?
+        authStore: any AuthStore
     ) {
         self.configuration = configuration
         self.urlSession = urlSession
-        self.authTokenProvider = authTokenProvider
+        self.authStore = authStore
     }
 
     func request<Response: Decodable>(
         _ endpoint: APIEndpoint,
         as responseType: Response.Type = Response.self
     ) async throws -> Response {
+        try await performRequest(endpoint, as: responseType, canRefreshToken: true)
+    }
+
+    func request(_ endpoint: APIEndpoint) async throws {
+        let _: EmptyResponse = try await request(endpoint, as: EmptyResponse.self)
+    }
+
+    private func performRequest<Response: Decodable>(
+        _ endpoint: APIEndpoint,
+        as responseType: Response.Type,
+        canRefreshToken: Bool
+    ) async throws -> Response {
         let request = try buildRequest(for: endpoint)
+        NetworkLogger.logRequest(request, endpoint: endpoint, isRetry: !canRefreshToken)
 
         do {
             let (data, response) = try await urlSession.data(for: request)
+            NetworkLogger.logResponse(response, data: data, endpoint: endpoint)
+
+            if isUnauthorized(response),
+               endpoint.requiresAuth,
+               canRefreshToken {
+                NetworkLogger.logRefreshAttempt()
+                try await refreshTokens()
+                return try await performRequest(endpoint, as: responseType, canRefreshToken: false)
+            }
+
             try validate(response: response, data: data)
 
             if Response.self == EmptyResponse.self, data.isEmpty {
@@ -56,10 +79,6 @@ final class APIClient: APIClientProtocol {
         } catch {
             throw AppError.requestFailed(error)
         }
-    }
-
-    func request(_ endpoint: APIEndpoint) async throws {
-        let _: EmptyResponse = try await request(endpoint, as: EmptyResponse.self)
     }
 
     private func buildRequest(for endpoint: APIEndpoint) throws -> URLRequest {
@@ -88,7 +107,7 @@ final class APIClient: APIClientProtocol {
         }
 
         if endpoint.requiresAuth {
-            guard let token = authTokenProvider(), !token.isEmpty else {
+            guard let token = authStore.readTokens()?.accessToken, !token.isEmpty else {
                 throw AppError.missingToken
             }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -101,25 +120,65 @@ final class APIClient: APIClientProtocol {
         return request
     }
 
+    private func refreshTokens() async throws {
+        guard let refreshToken = authStore.readTokens()?.refreshToken, !refreshToken.isEmpty else {
+            throw AppError.missingToken
+        }
+
+        let body = RefreshTokenRequest(refreshToken: refreshToken)
+        let endpoint = APIEndpoint(
+            path: "/auth/refresh",
+            method: .post,
+            body: try APIEndpoint.jsonBody(body),
+            requiresAuth: false
+        )
+        let request = try buildRequest(for: endpoint)
+        NetworkLogger.logRequest(request, endpoint: endpoint)
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+            NetworkLogger.logResponse(response, data: data, endpoint: endpoint)
+            try validate(response: response, data: data)
+            let refreshResponse: TokenRefreshResponse
+
+            do {
+                refreshResponse = try JSONDecoder.apiDecoder.decode(TokenRefreshResponse.self, from: data)
+            } catch {
+                throw AppError.decoding(error)
+            }
+
+            try authStore.saveTokens(refreshResponse.tokens)
+        } catch let error as AppError {
+            throw error
+        } catch {
+            throw AppError.requestFailed(error)
+        }
+    }
+
+    private func isUnauthorized(_ response: URLResponse) -> Bool {
+        (response as? HTTPURLResponse)?.statusCode == 401
+    }
+
     private func validate(response: URLResponse, data: Data) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AppError.invalidResponse
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
-            let apiError = try? JSONDecoder.apiDecoder.decode(APIErrorResponse.self, from: data)
+            let apiError = BackendAPIErrorResponse.decode(from: data)
+            let message = apiError?.resolvedMessage
 
             switch httpResponse.statusCode {
             case 401:
-                throw AppError.unauthorized
+                throw AppError.unauthorized(message: message)
             case 403:
-                throw AppError.forbidden
+                throw AppError.forbidden(message: message)
             case 404:
-                throw AppError.notFound
+                throw AppError.notFound(message: message)
             default:
                 throw AppError.server(
                     statusCode: httpResponse.statusCode,
-                    message: apiError?.message
+                    message: message
                 )
             }
         }
@@ -128,6 +187,6 @@ final class APIClient: APIClientProtocol {
 
 struct EmptyResponse: Decodable {}
 
-private struct APIErrorResponse: Decodable {
-    let message: String?
+private struct RefreshTokenRequest: Encodable {
+    let refreshToken: String
 }
