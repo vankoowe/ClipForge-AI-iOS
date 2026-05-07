@@ -9,6 +9,7 @@ import Foundation
 
 protocol ClipServiceProtocol {
     func fetchClips(jobID: String) async throws -> [Clip]
+    func fetchLatestJobID(videoID: String) async throws -> String?
     func generateClips(videoID: String) async throws -> Job
 }
 
@@ -23,6 +24,12 @@ final class ClipService: ClipServiceProtocol {
         let endpoint = APIEndpoint(path: "/jobs/\(jobID)/clips", method: .get)
         let response = try await apiClient.request(endpoint, as: APICollectionResponse<Clip>.self)
         return response.items
+    }
+
+    func fetchLatestJobID(videoID: String) async throws -> String? {
+        let endpoint = APIEndpoint(path: "/videos/\(videoID)", method: .get)
+        let response = try await apiClient.request(endpoint, as: APIObjectResponse<Video>.self)
+        return response.value.latestJobID
     }
 
     func generateClips(videoID: String) async throws -> Job {
