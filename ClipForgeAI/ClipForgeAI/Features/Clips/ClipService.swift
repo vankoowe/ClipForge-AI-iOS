@@ -53,7 +53,7 @@ final class ClipService: ClipServiceProtocol {
     }
 
     func generateClips(videoID: String) async throws -> Job {
-        let body = ProcessVideoRequest(selectedFeatures: [.clips])
+        let body = ProcessVideoRequest(selectedFeatures: [.clips], clipSettings: .balanced)
         let endpoint = APIEndpoint(
             path: "/videos/\(videoID)/process",
             method: .post,
@@ -141,10 +141,6 @@ final class ClipService: ClipServiceProtocol {
             return false
         }
     }
-}
-
-private struct ProcessVideoRequest: Encodable {
-    let selectedFeatures: [ProcessingFeature]
 }
 
 enum ClipLookupError: LocalizedError {

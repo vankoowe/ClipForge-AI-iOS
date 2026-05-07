@@ -10,7 +10,7 @@ import Foundation
 import UniformTypeIdentifiers
 
 protocol UploadServiceProtocol {
-    func uploadVideo(fileURL: URL, title: String) async throws -> Video
+    func uploadVideo(fileURL: URL, title: String, processRequest: ProcessVideoRequest) async throws -> Video
 }
 
 final class UploadService: UploadServiceProtocol {
@@ -22,7 +22,7 @@ final class UploadService: UploadServiceProtocol {
         self.uploadClient = uploadClient
     }
 
-    func uploadVideo(fileURL: URL, title: String) async throws -> Video {
+    func uploadVideo(fileURL: URL, title: String, processRequest: ProcessVideoRequest) async throws -> Video {
         let didStartSecurityScope = fileURL.startAccessingSecurityScopedResource()
         defer {
             if didStartSecurityScope {
@@ -61,7 +61,7 @@ final class UploadService: UploadServiceProtocol {
         )
         NetworkLogger.logUploadStage("video record created id=\"\(video.id)\" file=\"\(fileName)\"")
 
-        let processResponse = try await processVideo(videoID: video.id)
+        let processResponse = try await processVideo(videoID: video.id, processRequest: processRequest)
         NetworkLogger.logUploadStage("processing job created jobId=\"\(processResponse.jobID)\" videoId=\"\(video.id)\"")
         return video.with(latestJobID: processResponse.jobID, status: .processing)
     }
@@ -110,12 +110,15 @@ final class UploadService: UploadServiceProtocol {
         return response.value
     }
 
-    private func processVideo(videoID: String) async throws -> ProcessVideoResponse {
-        let body = ProcessVideoRequest(selectedFeatures: ProcessingFeature.allCases)
+    private func processVideo(videoID: String, processRequest: ProcessVideoRequest) async throws -> ProcessVideoResponse {
+        NetworkLogger.logUploadStage(
+            "process request videoId=\"\(videoID)\" features=\"\(processRequest.selectedFeatures.map(\.rawValue).joined(separator: ","))\" clipSettings=\(processRequest.clipSettings != nil)"
+        )
+
         let endpoint = APIEndpoint(
             path: "/videos/\(videoID)/process",
             method: .post,
-            body: try APIEndpoint.jsonBody(body)
+            body: try APIEndpoint.jsonBody(processRequest)
         )
 
         let response = try await apiClient.request(endpoint, as: APIObjectResponse<ProcessVideoResponse>.self)
@@ -166,10 +169,6 @@ private struct CreateVideoRecordRequest: Encodable {
     let fileName: String
     let durationSeconds: Int
     let fileSizeBytes: Int64
-}
-
-private struct ProcessVideoRequest: Encodable {
-    let selectedFeatures: [ProcessingFeature]
 }
 
 private struct PresignedUploadResponse: Decodable {
