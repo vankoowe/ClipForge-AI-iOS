@@ -14,11 +14,14 @@ import SwiftUI
 final class UploadViewModel: ObservableObject {
     @Published var title = ""
     @Published var selectedFeatures = Set(ProcessingFeature.allCases)
+    @Published var selectedLanguageHint: ProcessingLanguageHint = .auto
     @Published var selectedClipPreset: ClipLengthPreset = .balanced
     @Published var targetClipCount = ClipSettingsRequest.balanced.targetClipCount
     @Published var minDurationSeconds = ClipSettingsRequest.balanced.minDurationSeconds
     @Published var maxDurationSeconds = ClipSettingsRequest.balanced.maxDurationSeconds
     @Published var preferredDurationSeconds = ClipSettingsRequest.balanced.preferredDurationSeconds
+    @Published var captionsEnabled = ClipSettingsRequest.balanced.captionsEnabled
+    @Published var selectedAspectRatio: ClipAspectRatio = .vertical
     @Published private(set) var selectedFileURL: URL?
     @Published private(set) var isUploading = false
     @Published private(set) var isImportingPhoto = false
@@ -43,6 +46,12 @@ final class UploadViewModel: ObservableObject {
     var processingValidationMessage: String? {
         if selectedFeatures.isEmpty {
             return "Choose at least one processing feature."
+        }
+
+        do {
+            try selectedLanguageHint.validate()
+        } catch {
+            return error.localizedDescription
         }
 
         return clipSettingsValidationMessage
@@ -161,7 +170,9 @@ final class UploadViewModel: ObservableObject {
             targetClipCount: targetClipCount,
             minDurationSeconds: minDurationSeconds,
             maxDurationSeconds: maxDurationSeconds,
-            preferredDurationSeconds: preferredDurationSeconds
+            preferredDurationSeconds: preferredDurationSeconds,
+            captionsEnabled: captionsEnabled,
+            aspectRatio: selectedAspectRatio
         )
     }
 
@@ -169,6 +180,8 @@ final class UploadViewModel: ObservableObject {
         guard !selectedFeatures.isEmpty else {
             throw ClipSettingsValidationError("Choose at least one processing feature.")
         }
+
+        try selectedLanguageHint.validate()
 
         let clipSettings: ClipSettingsRequest?
 
@@ -182,6 +195,7 @@ final class UploadViewModel: ObservableObject {
 
         return ProcessVideoRequest(
             selectedFeatures: ProcessingFeature.allCases.filter { selectedFeatures.contains($0) },
+            languageHint: selectedLanguageHint,
             clipSettings: clipSettings
         )
     }
@@ -220,19 +234,23 @@ enum ClipLengthPreset: String, CaseIterable, Identifiable {
         switch self {
         case .short:
             return ClipSettingsRequest(
-                targetClipCount: 3,
+                targetClipCount: 2,
                 minDurationSeconds: 15,
                 maxDurationSeconds: 25,
-                preferredDurationSeconds: 20
+                preferredDurationSeconds: 20,
+                captionsEnabled: true,
+                aspectRatio: .vertical
             )
         case .balanced:
             return .balanced
         case .longer:
             return ClipSettingsRequest(
-                targetClipCount: 3,
+                targetClipCount: 2,
                 minDurationSeconds: 30,
                 maxDurationSeconds: 60,
-                preferredDurationSeconds: 45
+                preferredDurationSeconds: 45,
+                captionsEnabled: true,
+                aspectRatio: .vertical
             )
         }
     }

@@ -53,7 +53,7 @@ final class ClipService: ClipServiceProtocol {
     }
 
     func generateClips(videoID: String) async throws -> Job {
-        let body = ProcessVideoRequest(selectedFeatures: [.clips], clipSettings: .balanced)
+        let body = ProcessVideoRequest(selectedFeatures: [.clips], languageHint: .auto, clipSettings: .balanced)
         let endpoint = APIEndpoint(
             path: "/videos/\(videoID)/process",
             method: .post,

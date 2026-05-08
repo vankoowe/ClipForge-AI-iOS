@@ -33,6 +33,11 @@ struct UploadView: View {
 
                     UploadTitleField(title: $viewModel.title)
 
+                    ProcessingLanguageCard(
+                        selectedLanguageHint: $viewModel.selectedLanguageHint,
+                        isDisabled: viewModel.isUploading || viewModel.isImportingPhoto
+                    )
+
                     ProcessingFeaturesCard(
                         selectedFeatures: viewModel.selectedFeatures,
                         isDisabled: viewModel.isUploading || viewModel.isImportingPhoto,
@@ -49,6 +54,8 @@ struct UploadView: View {
                             minDurationSeconds: $viewModel.minDurationSeconds,
                             maxDurationSeconds: $viewModel.maxDurationSeconds,
                             preferredDurationSeconds: $viewModel.preferredDurationSeconds,
+                            captionsEnabled: $viewModel.captionsEnabled,
+                            selectedAspectRatio: $viewModel.selectedAspectRatio,
                             validationMessage: viewModel.clipSettingsValidationMessage,
                             isDisabled: viewModel.isUploading || viewModel.isImportingPhoto
                         )
@@ -191,6 +198,35 @@ private struct UploadHeader: View {
     }
 }
 
+private struct ProcessingLanguageCard: View {
+    @Binding var selectedLanguageHint: ProcessingLanguageHint
+    let isDisabled: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Language",
+                subtitle: selectedLanguageHint.rawValue
+            )
+
+            Picker("Language", selection: $selectedLanguageHint) {
+                ForEach(ProcessingLanguageHint.allCases) { language in
+                    Text(language.displayName).tag(language)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(.separator).opacity(0.35), lineWidth: 1)
+        )
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.65 : 1)
+    }
+}
+
 private struct ProcessingFeaturesCard: View {
     let selectedFeatures: Set<ProcessingFeature>
     let isDisabled: Bool
@@ -256,6 +292,8 @@ private struct ClipSettingsCard: View {
     @Binding var minDurationSeconds: Int
     @Binding var maxDurationSeconds: Int
     @Binding var preferredDurationSeconds: Int
+    @Binding var captionsEnabled: Bool
+    @Binding var selectedAspectRatio: ClipAspectRatio
 
     let validationMessage: String?
     let isDisabled: Bool
@@ -270,6 +308,33 @@ private struct ClipSettingsCard: View {
                 }
             }
             .pickerStyle(.segmented)
+
+            Picker("Aspect ratio", selection: $selectedAspectRatio) {
+                ForEach(ClipAspectRatio.allCases) { aspectRatio in
+                    Text(aspectRatio.displayName).tag(aspectRatio)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Toggle(isOn: $captionsEnabled) {
+                HStack(spacing: 12) {
+                    Image(systemName: "captions.bubble")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Color(red: 0.06, green: 0.45, blue: 0.47))
+                        .frame(width: 34, height: 34)
+                        .background(Color(red: 0.06, green: 0.45, blue: 0.47).opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Clip captions")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text("Burn captions into generated clips.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .toggleStyle(.switch)
 
             VStack(spacing: 12) {
                 SettingsStepper(

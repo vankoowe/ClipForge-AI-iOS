@@ -9,6 +9,7 @@ import Foundation
 
 struct ProcessVideoRequest: Encodable {
     let selectedFeatures: [ProcessingFeature]
+    let languageHint: ProcessingLanguageHint
     let clipSettings: ClipSettingsRequest?
 }
 
@@ -17,12 +18,16 @@ struct ClipSettingsRequest: Encodable, Equatable {
     let minDurationSeconds: Int
     let maxDurationSeconds: Int
     let preferredDurationSeconds: Int
+    let captionsEnabled: Bool
+    let aspectRatio: ClipAspectRatio?
 
     static let balanced = ClipSettingsRequest(
-        targetClipCount: 3,
+        targetClipCount: 2,
         minDurationSeconds: 15,
-        maxDurationSeconds: 45,
-        preferredDurationSeconds: 30
+        maxDurationSeconds: 35,
+        preferredDurationSeconds: 25,
+        captionsEnabled: true,
+        aspectRatio: .vertical
     )
 
     func validate() throws {
@@ -48,6 +53,54 @@ struct ClipSettingsRequest: Encodable, Equatable {
     }
 }
 
+enum ProcessingLanguageHint: String, Codable, CaseIterable, Identifiable {
+    case auto
+    case english = "en"
+    case bulgarian = "bg"
+
+    var id: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .auto:
+            return "Auto"
+        case .english:
+            return "English"
+        case .bulgarian:
+            return "Bulgarian"
+        }
+    }
+
+    func validate() throws {
+        guard rawValue == "auto" || rawValue.range(of: #"^[a-z]{2}$"#, options: .regularExpression) != nil else {
+            throw ClipSettingsValidationError("Language must be auto or a 2-letter lowercase code.")
+        }
+    }
+}
+
+enum ClipAspectRatio: String, Codable, CaseIterable, Identifiable {
+    case vertical = "9:16"
+    case square = "1:1"
+    case widescreen = "16:9"
+
+    var id: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .vertical:
+            return "9:16"
+        case .square:
+            return "1:1"
+        case .widescreen:
+            return "16:9"
+        }
+    }
+}
+
 struct ClipSettingsValidationError: LocalizedError {
     let message: String
 
@@ -59,4 +112,3 @@ struct ClipSettingsValidationError: LocalizedError {
         message
     }
 }
-
