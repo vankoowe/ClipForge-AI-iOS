@@ -9,7 +9,7 @@ import Foundation
 
 struct ProcessVideoRequest: Encodable {
     let selectedFeatures: [ProcessingFeature]
-    let languageHint: ProcessingLanguageHint
+    let languageHint: String
     let clipSettings: ClipSettingsRequest?
 }
 
@@ -19,7 +19,7 @@ struct ClipSettingsRequest: Encodable, Equatable {
     let maxDurationSeconds: Int
     let preferredDurationSeconds: Int
     let captionsEnabled: Bool
-    let aspectRatio: ClipAspectRatio?
+    let aspectRatio: String?
 
     static let balanced = ClipSettingsRequest(
         targetClipCount: 2,
@@ -27,7 +27,7 @@ struct ClipSettingsRequest: Encodable, Equatable {
         maxDurationSeconds: 35,
         preferredDurationSeconds: 25,
         captionsEnabled: true,
-        aspectRatio: .vertical
+        aspectRatio: ClipAspectRatio.vertical.rawValue
     )
 
     func validate() throws {
@@ -53,6 +53,17 @@ struct ClipSettingsRequest: Encodable, Equatable {
     }
 }
 
+extension ProcessVideoRequest {
+    var loggableJSONString: String {
+        guard let data = try? JSONEncoder.apiEncoder.encode(self),
+              let string = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+
+        return string
+    }
+}
+
 enum ProcessingLanguageHint: String, Codable, CaseIterable, Identifiable {
     case auto
     case english = "en"
@@ -74,6 +85,10 @@ enum ProcessingLanguageHint: String, Codable, CaseIterable, Identifiable {
     }
 
     func validate() throws {
+        try Self.validate(rawValue)
+    }
+
+    static func validate(_ rawValue: String) throws {
         guard rawValue == "auto" || rawValue.range(of: #"^[a-z]{2}$"#, options: .regularExpression) != nil else {
             throw ClipSettingsValidationError("Language must be auto or a 2-letter lowercase code.")
         }
