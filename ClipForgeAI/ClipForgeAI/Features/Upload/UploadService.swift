@@ -56,6 +56,7 @@ final class UploadService: UploadServiceProtocol {
             fileKey: uploadURLResponse.fileKey,
             originalFileURL: uploadURLResponse.publicFileURL,
             fileName: fileName,
+            title: title,
             durationSeconds: durationSeconds,
             fileSizeBytes: fileSizeBytes
         )
@@ -90,6 +91,7 @@ final class UploadService: UploadServiceProtocol {
         fileKey: String,
         originalFileURL: URL,
         fileName: String,
+        title: String,
         durationSeconds: Int,
         fileSizeBytes: Int64
     ) async throws -> Video {
@@ -97,6 +99,7 @@ final class UploadService: UploadServiceProtocol {
             fileKey: fileKey,
             originalFileUrl: originalFileURL,
             fileName: fileName,
+            title: title,
             durationSeconds: durationSeconds,
             fileSizeBytes: fileSizeBytes
         )
@@ -167,6 +170,7 @@ private struct CreateVideoRecordRequest: Encodable {
     let fileKey: String
     let originalFileUrl: URL
     let fileName: String
+    let title: String
     let durationSeconds: Int
     let fileSizeBytes: Int64
 }
