@@ -53,7 +53,13 @@ final class ClipService: ClipServiceProtocol {
     }
 
     func generateClips(videoID: String) async throws -> Job {
-        let body = ProcessVideoRequest(selectedFeatures: [.clips], languageHint: .auto, clipSettings: .balanced)
+        let body = ProcessVideoRequest(
+            selectedFeatures: ProcessingFeature.allCases,
+            languageHint: ProcessingLanguageHint.english.rawValue,
+            clipSettings: .balanced
+        )
+        NetworkLogger.logClipLookup("process request body \(body.loggableJSONString)")
+
         let endpoint = APIEndpoint(
             path: "/videos/\(videoID)/process",
             method: .post,
