@@ -114,9 +114,7 @@ final class UploadService: UploadServiceProtocol {
     }
 
     private func processVideo(videoID: String, processRequest: ProcessVideoRequest) async throws -> ProcessVideoResponse {
-        NetworkLogger.logUploadStage(
-            "process request videoId=\"\(videoID)\" features=\"\(processRequest.selectedFeatures.map(\.rawValue).joined(separator: ","))\" languageHint=\"\(processRequest.languageHint.rawValue)\" clipSettings=\(processRequest.clipSettings != nil)"
-        )
+        NetworkLogger.logUploadStage("process request videoId=\"\(videoID)\" body \(processRequest.loggableJSONString)")
 
         let endpoint = APIEndpoint(
             path: "/videos/\(videoID)/process",

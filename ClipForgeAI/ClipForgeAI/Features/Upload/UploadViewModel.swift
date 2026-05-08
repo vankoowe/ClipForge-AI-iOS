@@ -14,7 +14,7 @@ import SwiftUI
 final class UploadViewModel: ObservableObject {
     @Published var title = ""
     @Published var selectedFeatures = Set(ProcessingFeature.allCases)
-    @Published var selectedLanguageHint: ProcessingLanguageHint = .auto
+    @Published var selectedLanguageHint: ProcessingLanguageHint = .english
     @Published var selectedClipPreset: ClipLengthPreset = .balanced
     @Published var targetClipCount = ClipSettingsRequest.balanced.targetClipCount
     @Published var minDurationSeconds = ClipSettingsRequest.balanced.minDurationSeconds
@@ -172,7 +172,7 @@ final class UploadViewModel: ObservableObject {
             maxDurationSeconds: maxDurationSeconds,
             preferredDurationSeconds: preferredDurationSeconds,
             captionsEnabled: captionsEnabled,
-            aspectRatio: selectedAspectRatio
+            aspectRatio: selectedAspectRatio.rawValue
         )
     }
 
@@ -195,7 +195,7 @@ final class UploadViewModel: ObservableObject {
 
         return ProcessVideoRequest(
             selectedFeatures: ProcessingFeature.allCases.filter { selectedFeatures.contains($0) },
-            languageHint: selectedLanguageHint,
+            languageHint: selectedLanguageHint.rawValue,
             clipSettings: clipSettings
         )
     }
@@ -239,7 +239,7 @@ enum ClipLengthPreset: String, CaseIterable, Identifiable {
                 maxDurationSeconds: 25,
                 preferredDurationSeconds: 20,
                 captionsEnabled: true,
-                aspectRatio: .vertical
+                aspectRatio: ClipAspectRatio.vertical.rawValue
             )
         case .balanced:
             return .balanced
@@ -250,7 +250,7 @@ enum ClipLengthPreset: String, CaseIterable, Identifiable {
                 maxDurationSeconds: 60,
                 preferredDurationSeconds: 45,
                 captionsEnabled: true,
-                aspectRatio: .vertical
+                aspectRatio: ClipAspectRatio.vertical.rawValue
             )
         }
     }
